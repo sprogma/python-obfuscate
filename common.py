@@ -8,9 +8,7 @@ import copy
 class jsd(dict):
     def __init__(self, *args, **items):
         if len(args) == 1 and isinstance(args[0], dict):
-            super(jsd, self).__init__()
-            for key, value in args[0].items():
-                self[key] = jsd.recurse(value)
+            super(jsd, self).__init__(args[0])
         elif items and not args:
             super(jsd, self).__init__(items)
         else:
@@ -18,6 +16,9 @@ class jsd(dict):
 
     def __deepcopy__(self, memodict={}):
         return jsd.recurse(copy.deepcopy(dict(self),memo=memodict))
+
+    def __copy__(self):
+        return jsd(self)
 
     def __getattr__(self, name):
         return self[name]
