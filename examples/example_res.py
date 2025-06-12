@@ -1,1 +1,1 @@
-(a := 5) and False or ((b := 6) and False) or (print(a + b) and False)
+(a := 4) and False or ((b := 5) and False or (print(a ** b) and False or False))

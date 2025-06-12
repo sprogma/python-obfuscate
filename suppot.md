@@ -9,6 +9,10 @@
     - [ ] starred assign operators (x, *y, z = expr)
     - [ ] index assign (x[5] = expr)
     - [ ] attribute assign (x.y = expr)
+- [ ] Loops
+    - [ ] base for loop
+    - [ ] while loop
+    - [ ] tuple for loop     (for x, y in ...)
 
 ## self compiling status:
 not yet.

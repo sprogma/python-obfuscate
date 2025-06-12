@@ -37,7 +37,7 @@ if ($Benchmark)
         if ($repeats -eq "auto")
         {
             $WarmupTime = 0.5
-            $TestingTime = 20.0
+            $TestingTime = 4.0
 
             $time = [System.Collections.Generic.List[double]]::new();
 

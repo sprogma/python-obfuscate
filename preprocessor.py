@@ -9,6 +9,7 @@ class Preprocessor(code_provider.CodeProvider):
     """
         This class removes comments and docstrings from
         source code.
+        And normalize all strings (make one line)
     """
 
     def normalize(self, code: str) -> str:
@@ -24,4 +25,5 @@ class Preprocessor(code_provider.CodeProvider):
                     node.body.pop(0)
 
         # ast.unparse removes all comments
+        # and also convert all multiline strings to normal
         return ast.unparse(tree)
