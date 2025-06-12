@@ -11,7 +11,7 @@ class Preprocessor(code_provider.CodeProvider):
         source code.
     """
 
-    def preprocess(self, code: str) -> str:
+    def normalize(self, code: str) -> str:
         tree = ast.parse(code)
 
         for node in ast.walk(tree):

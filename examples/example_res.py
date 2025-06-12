@@ -1,0 +1,1 @@
+(a := 5) and (b := 6) and print(a + b)

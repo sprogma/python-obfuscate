@@ -23,11 +23,20 @@ class StatementCompiler(code_provider.CodeProvider):
 
         inner = self._normalize_assignment_chain(*chain)
 
-        if "," in exp:
-            ...
+        tok = [*tokenize.tokenize(io.BytesIO(exp.encode()).readline)]
 
-        res = inner
-        return res
+        # is exp - tuple assignment.
+        if any(map(lambda x: x.type == tokenize.OP and x.string == ",", tok)):
+            # create generator from inner chain
+            gen = f"({inner})"
+            raise NotImplementedError()
+        else:
+            if any(map(lambda x: x.type == tokenize.OP and x.string == "[", tok)):
+                raise NotImplementedError()
+            elif any(map(lambda x: x.type == tokenize.OP and x.string == ".", tok)):
+                raise NotImplementedError()
+            else:
+                return f"{exp} := ({inner})"
 
     def compile(self, stm: str) -> str:
         is_base_assign = lambda x: x.type == tokenize.OP and x.string == "="
@@ -53,32 +62,8 @@ class StatementCompiler(code_provider.CodeProvider):
 
                 ops = [*map(tokenize.untokenize, ops)]
 
-                print(*ops,sep="\n")
-
                 # join resulting ops
                 exp = self._normalize_assignment_chain(*ops)
 
                 return exp
         return stm
-
-
-c = StatementCompiler()
-
-y = 3
-
-print(c.compile("a, b = 1, 2"))
-exit(0)
-
-print(eval(c.compile("a,b = 1, 2")))
-
-
-print(c.compile("z = x = 5 + 6 * y"))
-print(eval(c.compile("z = x = 5 + 6 * y")))
-
-print(c.compile("y + 5 == 8"))
-print(eval(c.compile("y + 5 == 8")))
-
-a = [1, 2, 3]
-
-print(c.compile("a[0] = 5 + 6 * y"))
-print(eval(c.compile("a[0] = 5 + 6 * y")))

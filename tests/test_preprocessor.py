@@ -20,10 +20,10 @@ class X:
     def __init__(): self.x = X()
     ''')
 ])
-def test_Preprocessor_parse(code, expected):
+def test_Preprocessor_normalize(code, expected):
     a = preprocessor.Preprocessor()
     f = lambda s: s.translate(str.maketrans("",""," \n\t\r"))
-    assert f(a.preprocess(code)) == f(expected)
+    assert f(a.normalize(code)) == f(expected)
 
 
 
