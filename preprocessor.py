@@ -1,17 +1,17 @@
 import common
+import code_provider
 import ast
 
 
 
 
-class Preprocessor:
+class Preprocessor(code_provider.CodeProvider):
     """
         This class removes comments and docstrings from
         source code.
     """
 
-    @staticmethod
-    def preprocess(code: str) -> str:
+    def preprocess(self, code: str) -> str:
         tree = ast.parse(code)
 
         for node in ast.walk(tree):

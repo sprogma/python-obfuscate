@@ -21,7 +21,7 @@ class X:
     ''')
 ])
 def test_Preprocessor_parse(code, expected):
-    a = preprocessor.Preprocessor
+    a = preprocessor.Preprocessor()
     f = lambda s: s.translate(str.maketrans("",""," \n\t\r"))
     assert f(a.preprocess(code)) == f(expected)
 
