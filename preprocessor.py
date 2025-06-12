@@ -1,23 +1,27 @@
 import common
+import ast
 
 
 
-class IPreprocessor:
+
+class Preprocessor:
+    """
+        This class removes comments and docstrings from
+        source code.
+    """
+
     @staticmethod
     def preprocess(code: str) -> str:
-        moditify = ""
-        for i in
-        return code
+        tree = ast.parse(code)
 
+        for node in ast.walk(tree):
+            # remove docstrigns
+            if (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module)) and ast.get_docstring(node, clean=False) is not None):
+                if (    node.body and
+                        isinstance(node.body[0], ast.Expr) and
+                        isinstance(node.body[0].value, ast.Constant) and
+                        isinstance(node.body[0].value.value, str)):
+                    node.body.pop(0)
 
-
-
-code = """import nltk
- from nltk.stem import PorterStemmer
- porter_stemmer=PorterStemmer()
- words=["connect","connected","connection","connections","connects"]
- stemmed_words=[porter_stemmer.stem(word) for word in words]
- stemmed_words"""
-
-for tok in tokenize(BytesIO(code.encode('utf-8')).readline):
-    print(f"Type: {tok.type}\nString: {tok.string}\nStart: {tok.start}\nEnd: {tok.end}\nLine: {tok.line.strip()}\n======\n")
+        # ast.unparse removes all comments
+        return ast.unparse(tree)
