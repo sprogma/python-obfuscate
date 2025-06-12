@@ -65,5 +65,8 @@ class StatementCompiler(code_provider.CodeProvider):
                 # join resulting ops
                 exp = self._normalize_assignment_chain(*ops)
 
-                return exp
-        return stm
+                return f"({exp}) and False"
+
+        else:
+            # still, need make expression false-equal
+            return f"({stm}) and False"

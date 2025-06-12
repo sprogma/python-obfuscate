@@ -24,5 +24,5 @@ class Compiler:
 
         stmts = [*map(self.sc.compile, stmts)]
 
-        return " and ".join(map(lambda x: f"({x})", stmts))
+        return " or ".join(map(lambda x: f"({x})", stmts))
 
