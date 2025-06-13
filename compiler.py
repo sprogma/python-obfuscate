@@ -141,6 +141,7 @@ class Compiler:
 
             return jsd(next=return_line, code=exp)
         elif line.startswith("for"):
+
             fake_code = f"{line}..."
 
             # use ast to split it in parts
@@ -151,6 +152,7 @@ class Compiler:
                 if isinstance(node, ast.For):
                     vars_src = ast.get_source_segment(fake_code, node.target)
                     iter_src = ast.get_source_segment(fake_code, node.iter)
+                    break
 
             if vars_src is None or iter_src is None:
                 raise CompilationError(f"{self.filename}:{codeline}:{indent}: For cycle is wrong and wasn't parsed.")
@@ -167,6 +169,36 @@ class Compiler:
             # create expression
 
             exp = f"any((({body.code}) for {vars_src} in ({iter_src})))"
+
+            if follow.code is not None:
+                exp = f"({exp}) or ({follow.code})"
+
+            return jsd(next=follow.next, code=exp)
+        elif line.startswith("import"):
+            # using good (strict) syntax of import ... statement
+            # split by ","
+            modules = line.removeprefix("import").split(",")
+            data = []
+            for mod in modules:
+                # for some reason, python throws an error if module or class name is "as"
+                mod = mod.split()
+                if len(mod) == 3 and "as" in mod:
+                    data.append(jsd(module=mod[0], name=mod[2]))
+                elif len(mod) == 1:
+                    data.append(jsd(module=mod[0], name=mod[0]))
+                else:
+                    raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong import statement.")
+
+            # generate expression
+            exp = ""
+
+            for mod in data:
+                if exp == "":
+                    exp = f"(({mod.name} := __import__({repr(mod.module)})) and False)"
+                else:
+                    exp = f"({exp}) or (({mod.name} := __import__({repr(mod.module)})) and False)"
+
+            follow = self._compile_block(codeline + 1, indent)
 
             if follow.code is not None:
                 exp = f"({exp}) or ({follow.code})"

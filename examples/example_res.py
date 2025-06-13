@@ -1,1 +1,1 @@
-(a := 8192401) and False or any(((print(i) and False if a % i == 0 else None) and False for i in range(1, a + 1)))
+(random := __import__('random')) and False or (any((any((... and False for ii in range(10))) for i in range(10))) or ((a := 1) and False or ((a := (a + 1)) and False)))
