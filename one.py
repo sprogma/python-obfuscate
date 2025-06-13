@@ -40,9 +40,12 @@ if __name__ == "__main__":
             statement_compiler=sc
         )
 
-        code = c.compile(content)
+        code = c.compile(name, content)
 
-        with open(dest, "w") as file:
-            file.write(code)
+        if code is None:
+            print("Compilation returned Null")
+        else:
+            with open(dest, "w") as file:
+                file.write(code)
 
     print("Compilation end.")

@@ -1,1 +1,1 @@
-(a := 4) and False or ((b := 5) and False or (print(a ** b) and False or False))
+(a := 8192401) and False or any(((print(i) and False if a % i == 0 else None) and False for i in range(1, a + 1)))

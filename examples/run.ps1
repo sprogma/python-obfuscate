@@ -44,6 +44,7 @@ if ($Benchmark)
             $start = [datetime]::UtcNow
             do
             {
+                Measure-Command { & $pythonExecutable $Destination } | Out-Null
                 $nowTime = ([datetime]::UtcNow - $start).TotalSeconds
                 Write-Progress -Activity "benchmark $file" -Status "warmup" -PercentComplete ([int]([math]::min(100, $nowTime / $WarmupTime * 100)))
             }
@@ -89,29 +90,27 @@ if ($Benchmark)
     ($b = ($now | Measure-Object -AllStats)) | Select-Object Count, Average, Maximum, Minimum, StandardDeviation | Out-Host
 
 
-    if ($a.Average -gt 1e-12)
+    if ($a.Average -gt 1e-12 -and $b.Average -gt 1e-12)
     {
         $speed = $b.Average / $a.Average * 100
-    }
-    else
-    {
-        $speed = "inf"
-    }
-    Write-Host "At average, new solution is $([math]::round($speed, 1))% of previous." -ForegroundColor Yellow
 
-    if ([math]::abs($speed - 100) -lt 2.0)
-    {
-        Write-Host "Them are almost equal!" -ForegroundColor Yellow
-    }
-    elseif ($speed -lt 100)
-    {
-        $tt = 100 / $speed;
-        Write-Host "new is $tt times faster!" -ForegroundColor Green
+        Write-Host "At average, new solution is $([math]::round($speed, 1))% of previous." -ForegroundColor Yellow
+
+        if ([math]::abs($speed - 100) -lt 2.0) {
+            Write-Host "Them are almost equal!" -ForegroundColor Yellow
+        }
+        elseif ($speed -lt 100) {
+            $tt = 100 / $speed;
+            Write-Host "new is $tt times faster!" -ForegroundColor Green
+        }
+        else {
+            $tt = $speed / 100;
+            Write-Host "old is $tt times slower!" -ForegroundColor Red
+        }
     }
     else
     {
-        $tt = $speed / 100;
-        Write-Host "old is $tt times slower!" -ForegroundColor Red
+        Write-Host "Solutions are incomparable! [speed of one of them is almost zero]"
     }
 
 }
