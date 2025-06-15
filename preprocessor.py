@@ -1,6 +1,8 @@
 import common
 import code_provider
+import tokenize
 import ast
+import io
 
 
 
@@ -11,6 +13,9 @@ class Preprocessor(code_provider.CodeProvider):
         source code.
         And normalize all strings (make one line)
     """
+
+    def __init__(self):
+        ...
 
     def normalize(self, code: str) -> str:
         tree = ast.parse(code)
@@ -27,3 +32,6 @@ class Preprocessor(code_provider.CodeProvider):
         # ast.unparse removes all comments
         # and also convert all multiline strings to normal
         return ast.unparse(tree)
+
+
+

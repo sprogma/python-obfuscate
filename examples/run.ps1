@@ -1,6 +1,7 @@
 param(
     [string]$Path="examples/example.py",
     [string]$Destination = "examples/example_res.py",
+    [switch]$MinimizeCode,
     [switch]$PrintAfter,
     [switch]$RunAfter,
     [switch]$Benchmark,
@@ -11,6 +12,14 @@ $pythonExecutable = "py"
 
 
 & $pythonExecutable one.py $Path -o $Destination
+
+
+if ($MinimizeCode)
+{
+    $code = & $pythonExecutable -m python_minifier --no-hoist-literals $Destination
+    $code >$Destination
+}
+
 
 if ($PrintAfter)
 {

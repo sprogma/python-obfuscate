@@ -4,6 +4,7 @@
 import common
 import preprocessor
 import statement_compiler
+import block_compiler
 import compiler
 import sys
 
@@ -33,11 +34,11 @@ if __name__ == "__main__":
             content = file.read()
 
         p = preprocessor.Preprocessor()
-        sc = statement_compiler.StatementCompiler()
+        b = block_compiler.BlockCompiler(statement_compiler=statement_compiler.StatementCompiler())
 
         c = compiler.Compiler(
             preprocessor=p,
-            statement_compiler=sc
+            block_compiler=b
         )
 
         code = c.compile(name, content)

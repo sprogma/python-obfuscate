@@ -22,7 +22,7 @@ class StatementCompiler(code_provider.CodeProvider):
 
     def custom_header(self):
         return """
-            ()
+            (True)
     """
 
     def _set_target(self, target: ast.Expr, value: str) -> str:
@@ -31,6 +31,8 @@ class StatementCompiler(code_provider.CodeProvider):
             raise NotImplementedError("tuple set")
         elif isinstance(target, ast.Attribute):
             raise NotImplementedError("attribute set")
+        elif isinstance(target, ast.Subscript):
+            return f"(({ast.unparse(target.value)}).__setitem__({ast.unparse(target.slice)}, ({value})) and False)"
         elif isinstance(target, ast.Name):
             return f"(({target.id} := ({value})) and False)"
         raise ValueError("StatementCompiler._set_target wrong target.")

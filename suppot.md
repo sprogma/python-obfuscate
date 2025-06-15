@@ -7,7 +7,7 @@
     - [X] assign operator chains (x = y = expr)
     - [ ] tuple assign operators (x, y = expr)
     - [ ] starred assign operators (x, *y, z = expr)
-    - [ ] index assign (x[5] = expr)
+    - [X] index assign (x[5] = expr)
     - [ ] attribute assign (x.y = expr)
 - [X] Branches
     - [X] if
@@ -49,7 +49,7 @@
     - [ ] while
     - [X] def
     - [ ] class
-    - [ ] return
+    - [X] return
     - [X] lambda
     - [X] await
     - [ ] assert
@@ -66,4 +66,8 @@
 
 ## self compiling status:
 not yet.
+### need to implement
+- from import
+- classes (partly)
+- multiple files
 
