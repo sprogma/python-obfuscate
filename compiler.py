@@ -1,18 +1,24 @@
 from common import jsd
 from exceptions import CompilationError
+from preprocessor import Preprocessor
+from statement_compiler import StatementCompiler
+import random
 import tokenize
+import time
 import ast
 import io
 
 
 class Compiler:
     def __init__(self, preprocessor, statement_compiler):
-        self.p = preprocessor
-        self.sc = statement_compiler
+        self.p: Preprocessor = preprocessor
+        self.sc: StatementCompiler = statement_compiler
 
         self.code: list[str] = []
 
         self.filename: str = ""
+
+        self.seed = str(random.randint(0, 999999999) + int(time.time() * 1000))
 
     def compile(self, filename: str, code: str) -> str | None:
 
@@ -74,7 +80,7 @@ class Compiler:
 
 
         # check content
-        if line.startswith("if"):
+        if line.startswith("if "):
 
             branches = []
 
@@ -140,7 +146,7 @@ class Compiler:
                 exp = f"({exp}) or ({following_code})"
 
             return jsd(next=return_line, code=exp)
-        elif line.startswith("for"):
+        elif line.startswith("for "):
 
             fake_code = f"{line}..."
 
@@ -157,8 +163,6 @@ class Compiler:
             if vars_src is None or iter_src is None:
                 raise CompilationError(f"{self.filename}:{codeline}:{indent}: For cycle is wrong and wasn't parsed.")
 
-            # supproted only simple for with one variable
-
             # compile body
             body = self._compile_block(codeline + 1, indent, new_block = True)
 
@@ -174,7 +178,7 @@ class Compiler:
                 exp = f"({exp}) or ({follow.code})"
 
             return jsd(next=follow.next, code=exp)
-        elif line.startswith("import"):
+        elif line.startswith("import "):
             # using good (strict) syntax of import ... statement
             # split by ","
             modules = line.removeprefix("import").split(",")
@@ -204,6 +208,76 @@ class Compiler:
                 exp = f"({exp}) or ({follow.code})"
 
             return jsd(next=follow.next, code=exp)
+        elif line.startswith("def ") or line.startswith("async "):
+            fake_code = f"{line.removeprefix('async').lstrip()}..."
+
+            tree = ast.parse(fake_code)
+
+            name = args = None
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    signature = node.args
+                    parts: list[str] = []
+
+                    # posonlyargs (after them there are "/")
+                    if signature.posonlyargs:
+                        parts.extend(map(lambda x: x.arg, signature.posonlyargs))
+                        parts.append("/")
+
+                    # base args
+                    parts.extend(map(lambda x: x.arg, signature.args))
+
+                    # check if there is one-starred arguments
+                    if signature.vararg:
+                        parts.append(f"*{signature.vararg.arg}")
+                    elif signature.kwonlyargs:
+                        parts.append("*")
+
+                    # key-value args
+                    parts.extend(map(lambda x: x.arg, signature.kwonlyargs))
+
+                    # dynamic key-value (**)
+                    if signature.kwarg:
+                        parts.append(f"**{signature.kwarg.arg}")
+
+                    # fill defaults in last positional arguments
+                    val_args_len = len(signature.posonlyargs) + len(signature.args)
+                    for i, default in enumerate(signature.defaults, val_args_len - len(signature.defaults)):
+                        parts[i] = f"{parts[i]}={ast.unparse(default)}"
+
+                    # key-value defaults
+                    offset = val_args_len + bool(signature.vararg or signature.kwonlyargs) # add one space for "*"" or "*abc"
+                    for i, default in enumerate(signature.kw_defaults):
+                        if default is not None:
+                            parts[offset + i] = f"{parts[offset + i]}={ast.unparse(default)}"
+
+                    args = ", ".join(parts)
+
+                    name = node.name
+                    break
+
+            if name is None or args is None:
+                raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong def statement: [this exception impossible]")
+
+            # compile body
+            body = self._compile_block(codeline + 1, indent, new_block = True)
+
+            # compile following code
+
+            follow = self._compile_block(body.next, indent)
+
+            # create expression
+
+            if line.startswith("async "):
+                exp = f"({name} := (lambda {args}: (({body.code}) for __t{self.seed} in '_' if True or await fun()).__anext__())) and False"
+            else:
+                exp = f"({name} := (lambda {args}: ({body.code}))) and False"
+
+            if follow.code is not None:
+                exp = f"({exp}) or ({follow.code})"
+
+            return jsd(next=follow.next, code=exp)
         else:
             # not keyword
 
@@ -212,7 +286,10 @@ class Compiler:
             follow = self._compile_block(codeline + 1, indent)
 
             if follow.code is not None:
-                exp = f"({exp}) or ({follow.code})"
+                if exp is None:
+                    exp = follow.code
+                else:
+                    exp = f"({exp}) or ({follow.code})"
 
             return jsd(next=follow.next, code=exp)
 

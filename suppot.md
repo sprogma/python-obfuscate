@@ -14,15 +14,15 @@
     - [X] else
     - [X] elif
 - [ ] Loops
-    - [ ] base for loop
+    - [X] base for loop
     - [ ] while loop
-    - [ ] tuple for loop     (for x, y in ...)
+    - [X] tuple for loop     (for x, y in ...)
     ### hard to implement
     - [ ] continue
     - [ ] break
     - [ ] else after loops
 - [ ] Import
-    - [ ] import
+    - [X] import
     - [ ] from import
     - [ ] from import *
 - [ ] Decorators
@@ -35,26 +35,33 @@
     - [ ] function with parameters
     - [ ] class simple
     - [ ] class with parameters
+- [ ] Async
+    - [X] keyword and simple logic
+    - [ ] return
+    - [ ] try / except
 - [ ] Keywords
-    - [ ] import
+    - [X] import
     - [ ] from import
     - [X] if
     - [X] elif
     - [X] else
     - [ ] for
     - [ ] while
-    - [ ] def
+    - [X] def
     - [ ] class
     - [ ] return
+    - [X] lambda
+    - [X] await
+    - [ ] assert
     ### hard to implement
     - [ ] yield
     - [ ] global
     - [ ] nonlocal
     - [ ] raise
-    - [ ] assert
     - [ ] try
     - [ ] continue
     - [ ] break
+    - [X] async
 - [ ] Multiple files
 
 ## self compiling status:

@@ -1,8 +1,12 @@
-import common
+from common import jsd
 import code_provider
+from exceptions import CompilationError
 import re
 import tokenize
+import ast
 import io
+import random
+import time
 
 
 
@@ -12,60 +16,69 @@ class StatementCompiler(code_provider.CodeProvider):
     """
 
 
+    def __init__(self):
+        self.seed = str(random.randint(0, 999999999) + int(time.time() * 1000))
+
+
     def custom_header(self):
         return """
             ()
     """
 
-    def _normalize_assignment_chain(self, exp: str, *chain: (str)) -> str:
-        if not chain:
-            return exp
+    def _set_target(self, target: ast.Expr, value: str) -> str:
 
-        inner = self._normalize_assignment_chain(*chain)
+        if isinstance(target, ast.Tuple):
+            raise NotImplementedError("tuple set")
+        elif isinstance(target, ast.Attribute):
+            raise NotImplementedError("attribute set")
+        elif isinstance(target, ast.Name):
+            return f"(({target.id} := ({value})) and False)"
+        raise ValueError("StatementCompiler._set_target wrong target.")
 
-        tok = [*tokenize.tokenize(io.BytesIO(exp.encode()).readline)]
+    def compile(self, stm: str) -> str | None:
 
-        # is exp - tuple assignment.
-        if any(map(lambda x: x.type == tokenize.OP and x.string == ",", tok)):
-            # create generator from inner chain
-            gen = f"({inner})"
-            raise NotImplementedError()
-        else:
-            if any(map(lambda x: x.type == tokenize.OP and x.string == "[", tok)):
-                raise NotImplementedError()
-            elif any(map(lambda x: x.type == tokenize.OP and x.string == ".", tok)):
-                raise NotImplementedError()
-            else:
-                return f"{exp} := ({inner})"
+        tree = ast.parse(stm)
 
-    def compile(self, stm: str) -> str:
-        is_base_assign = lambda x: x.type == tokenize.OP and x.string == "="
-        is_self_assign = lambda x: x.type == tokenize.OP and x.string in ("+=", "-=", "*=", "/=", "%=", "**=")
-        is_any_assign = lambda x: is_base_assign(x) or is_self_assign(x)
-
-        # tokenize string
-        tok = [*tokenize.tokenize(io.BytesIO(stm.encode()).readline)]
+        assign = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) or isinstance(node, ast.AugAssign) or isinstance(node, ast.AnnAssign):
+                if assign is not None:
+                    raise CompilationError("Error: Two assign nodes in one statement. [Impossible]")
+                assign = node
 
         # is there assignement operator?
-        if any(map(is_any_assign, tok)):
-            # is there one of "+=", "-=", ...
-            if any(map(is_self_assign, tok)):
+        if assign is not None:
+            if isinstance(assign, ast.AugAssign):
                 # in this case there cannot be chain of a = b = c expressions.
                 raise NotImplementedError("+=, -=, ... statements.")
             else:
-                ops = [[]]
-                for i in tok:
-                    if is_base_assign(i):
-                        ops.append([])
-                    elif i.type != tokenize.ENCODING:
-                        ops[-1].append(i)
+                targets = []
+                value = None
+                if isinstance(assign, ast.AnnAssign):
+                    # there is only one target
+                    targets.append(assign.target)
+                    if assign.value is not None:
+                        value =  ast.get_source_segment(stm, assign.value) # or use ast.unparse
+                else:
+                    targets.extend(assign.targets)
 
-                ops = [*map(tokenize.untokenize, ops)]
+                    value =  ast.get_source_segment(stm, assign.value) # or use ast.unparse
 
-                # join resulting ops
-                exp = self._normalize_assignment_chain(*ops)
+                if value is None:
+                    return None
 
-                return f"({exp}) and False"
+                targets = [*map(lambda x: jsd(code=ast.get_source_segment(stm, x), ast=x), targets)]
+
+                value_var = f"__t{self.seed}";
+
+                exp = f"({value_var} := ({value})) and False"
+
+                # assign value to all
+                for t in targets:
+                    tset = self._set_target(t.ast, value_var)
+                    exp = f"({exp}) or ({tset})"
+
+                return exp
 
         else:
             # still, need make expression false-equal
