@@ -29,10 +29,10 @@ class BlockCompiler(code_provider.CodeProvider):
 
         return self.compile_block(0, 0)
 
-
     def custom_imports(self):
         return super().custom_imports() + [
-            "contextlib"
+            "contextlib",
+            "importlib"
         ]
 
     def custom_header(self):
@@ -73,7 +73,6 @@ class BlockCompiler(code_provider.CodeProvider):
         line = full_line[indent:]
         return indent, line
 
-
     def compile_block(self, codeline: int, baseindent: int, *, new_block = False, class_body = False) -> jsd:
         # print(f"call _compile_block({codeline}, {baseindent}, {new_block})")
         # __import__("time").sleep(0.5)
@@ -83,7 +82,6 @@ class BlockCompiler(code_provider.CodeProvider):
                 return jsd(next=codeline, dict={})
             else:
                 return jsd(next=codeline, code=None)
-
 
         indent, line = self.unpack_string(self.code[codeline])
         # print(f"find indent: {indent} <{line}>")
@@ -108,8 +106,6 @@ class BlockCompiler(code_provider.CodeProvider):
                     return jsd(next=codeline, dict={})
                 else:
                     return jsd(next=codeline, code=None)
-
-
 
         # check content
         if line.startswith("if "):
@@ -140,7 +136,6 @@ class BlockCompiler(code_provider.CodeProvider):
                 branches.append(jsd(exp=exp, code=elif_true.code))
 
                 end_line = elif_true.next
-
 
             else_code = None
             return_line = end_line
@@ -242,16 +237,39 @@ class BlockCompiler(code_provider.CodeProvider):
                 elif len(mod) == 1:
                     data.append(jsd(module=mod[0], name=mod[0]))
                 else:
-                    raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong import statement.")
+                    raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong import ... statement.")
 
             # generate expression
             exp = ""
 
             for mod in data:
                 if exp == "":
-                    exp = f"(({mod.name} := __import__({repr(mod.module)})) and False)"
+                    exp = f"(({mod.name} := __ONE_lib_importlib.import_module({repr(mod.module)})) and False)"
                 else:
-                    exp = f"({exp}) or (({mod.name} := __import__({repr(mod.module)})) and False)"
+                    exp = f"({exp}) or (({mod.name} := __ONE_lib_importlib.import_module({repr(mod.module)})) and False)"
+
+            follow = self.compile_block(codeline + 1, indent)
+
+            if follow.code is not None:
+                exp = f"({exp}) or ({follow.code})"
+
+            return jsd(next=follow.next, code=exp)
+        elif line.startswith("from "):
+            base = line[:max(line.find(" import "), line.find(" import*"))].removeprefix("from").strip()
+            elements = line[max(line.find(" import "), line.find(" import*")):].lstrip().removeprefix("import").split(",")
+            data = []
+            for e in elements:
+                e = e.split()
+                if len(e) == 3 and "as" in e:
+                    data.append(jsd(element=e[0], name=e[2]))
+                elif len(e) == 1:
+                    data.append(jsd(element=e[0], name=e[0]))
+                else:
+                    raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong from ... import ... statement.")
+
+            exp = f"(__ONE_import := __ONE_lib_importlib.import_module({repr(base)})) and False"
+            for e in data:
+                exp = f"({exp}) or (({e.name} := __ONE_import.{e.element}) and False)"
 
             follow = self.compile_block(codeline + 1, indent)
 
@@ -340,12 +358,11 @@ class BlockCompiler(code_provider.CodeProvider):
                                 ][-1]
                             )
                         """
-            print(f"!{name} FUNCTION CODE GENERATED: RETURN {class_body}")
             if class_body:
                 # follow will override function if there is same name
                 return jsd(next = follow.next, dict = {name : fn} | follow.dict)
             else:
-                exp = f"(name := {fn}) and False"
+                exp = f"({name} := {fn}) and False"
                 if follow.code is not None:
                     exp = f"({exp}) or ({follow.code})"
 
@@ -360,7 +377,7 @@ class BlockCompiler(code_provider.CodeProvider):
             # compile follow?
             follow = self.compile_block(codeline + 1, indent)
 
-            exp = f"(_ for _ in '_').throw(__ONE_cls_ReturnObject(__ONE_var_realfunction, ({val}))) and False"
+            exp = f"(__ONE_trash for __ONE_trash in '_').throw(__ONE_cls_ReturnObject(__ONE_var_realfunction, ({val}))) and False"
 
             if follow.code is not None:
                 exp = f"({exp}) or ({follow.code})"
@@ -396,6 +413,31 @@ class BlockCompiler(code_provider.CodeProvider):
                 exp = f"({exp}) or ({follow.code})"
 
             return jsd(next=follow.next, code=exp)
+        elif line.startswith("raise "):
+            value = line.removeprefix("raise")
+            exp = f"(__ONE_trash for __ONE_trash in '_').throw({value}) and False"
+
+            follow = self.compile_block(codeline + 1, indent)
+
+            if follow.code is not None:
+                if exp is None:
+                    exp = follow.code
+                else:
+                    exp = f"({exp}) or ({follow.code})"
+
+            return jsd(next=follow.next, code=exp)
+        elif line.strip() == "pass":
+
+            follow = self.compile_block(codeline + 1, indent, class_body = class_body)
+
+            if class_body:
+                return jsd(next=follow.next, dict=follow.dict)
+            else:
+                if follow.code is not None:
+                    exp = f"{follow.code}"
+                else:
+                    exp = "False"
+                return jsd(next=follow.next, code=exp)
         else:
             # not keyword
 
@@ -410,4 +452,3 @@ class BlockCompiler(code_provider.CodeProvider):
                     exp = f"({exp}) or ({follow.code})"
 
             return jsd(next=follow.next, code=exp)
-

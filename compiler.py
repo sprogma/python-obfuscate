@@ -42,6 +42,10 @@ class Compiler:
         for lib in imports:
             program = f"((__ONE_lib_{lib} := __import__({repr(lib)})) and False) or ({program})"
 
+        print(program)
+        print()
+        print()
+
         # normalize result
         program = self.p.normalize(program)
 

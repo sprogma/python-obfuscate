@@ -5,17 +5,18 @@
 - [ ] Assign operator
     - [X] base assign operator (x = expr)
     - [X] assign operator chains (x = y = expr)
-    - [ ] tuple assign operators (x, y = expr)
+    - [X] tuple assign operators (x, y = expr)
     - [ ] starred assign operators (x, *y, z = expr)
     - [X] index assign (x[5] = expr)
     - [ ] attribute assign (x.y = expr)
+    - [X] opertation assign (a += 1)
 - [X] Branches
     - [X] if
     - [X] else
     - [X] elif
 - [ ] Loops
     - [X] base for loop
-    - [ ] while loop
+    - [X] while loop
     - [X] tuple for loop     (for x, y in ...)
     ### hard to implement
     - [ ] continue
@@ -23,7 +24,7 @@
     - [ ] else after loops
 - [ ] Import
     - [X] import
-    - [ ] from import
+    - [X] from import
     - [ ] from import *
 - [ ] Decorators
     - [ ] function simple
@@ -51,14 +52,15 @@
     - [ ] try / except
 - [ ] Keywords
     - [X] import
-    - [ ] from import
+    - [X] from import
     - [X] if
     - [X] elif
     - [X] else
-    - [ ] for
-    - [ ] while
+    - [X] for
+    - [X] while
+    - [X] pass
     - [X] def
-    - [ ] class
+    - [X] class
     - [X] return
     - [X] lambda
     - [X] await
@@ -67,7 +69,7 @@
     - [ ] yield
     - [ ] global
     - [ ] nonlocal
-    - [ ] raise
+    - [X] raise
     - [ ] try
     - [ ] continue
     - [ ] break
@@ -77,7 +79,6 @@
 ## self compiling status:
 not yet.
 ### need to implement
-- from import
-- classes (partly)
+- attribute set
 - multiple files
 
