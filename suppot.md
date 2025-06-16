@@ -6,9 +6,12 @@
     - [X] base assign operator (x = expr)
     - [X] assign operator chains (x = y = expr)
     - [X] tuple assign operators (x, y = expr)
+    - [ ] nested tuple assign operators (x, (y, z) = expr)
     - [ ] starred assign operators (x, *y, z = expr)
     - [X] index assign (x[5] = expr)
-    - [ ] attribute assign (x.y = expr)
+    - [X] attribute assign (x.y = expr)
+    - [X] tuple attribute assign (x.y, x.z = expr)
+    - [X] tuple index assign (a[0], a[3] = expr)
     - [X] opertation assign (a += 1)
 - [X] Branches
     - [X] if
@@ -79,6 +82,5 @@
 ## self compiling status:
 not yet.
 ### need to implement
-- attribute set
 - multiple files
 

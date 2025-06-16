@@ -31,7 +31,6 @@ class Compiler:
         if result.code == None:
             raise CompilationError(f"{filename}:{result.next}:0: Empty resulting code.")
 
-
         imports, headers = self._collect_headers()
 
         # merge result with headers from components
@@ -60,4 +59,3 @@ class Compiler:
         # remove duplicates
         inc = [*set(inc)]
         return inc, head
-

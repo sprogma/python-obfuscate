@@ -18,9 +18,47 @@ class StatementCompiler(code_provider.CodeProvider):
         self.seed = str(random.randint(0, 999999999) + int(time.time() * 1000))
 
     def custom_header(self):
-        return """
-            (True)
-    """
+        return super().custom_header() + [
+            # function to use __i...__ methods
+            """
+                (
+                    __ONE_sync_i_op := lambda a, b, im, m, rm:
+                    (
+                        (
+                            result
+                        )
+                        if callable(mim := getattr(a, im, None)) and (result := mim(b)) is not NotImplemented else
+                        (
+
+                            (
+                                result
+                            )
+                            if callable(mm := getattr(a, m, None)) and (result := mm(b)) is not NotImplemented else
+                            (
+                                (
+                                    result
+                                )
+                                if callable(mrm := getattr(b, rm, None)) and (result := mrm(a)) is not NotImplemented else
+                                (
+                                    print(f"ERROR: CANNOT ADD {a} AND {b} ({type(a)}, {type(b)})")
+                                    or
+                                    NotImplemented
+                                )
+                            )
+                        )
+                    )
+                )
+            """
+        ]
+
+    def _set_single(self, target: ast.expr, value: str) -> str:
+        if isinstance(target, ast.Attribute):
+            return f"setattr({ast.unparse(target.value)}, {repr(target.attr)}, {value}) and False"
+        elif isinstance(target, ast.Subscript):
+            return f"({ast.unparse(target.value)}).__setitem__({ast.unparse(target.slice)}, ({value})) and False"
+        elif isinstance(target, ast.Name):
+            return f"({target.id} := ({value})) and False"
+        raise ValueError("StatementCompiler._set_single wrong target.")
 
     def _set_target(self, target: ast.Expr, value: str) -> str:
 
@@ -28,15 +66,15 @@ class StatementCompiler(code_provider.CodeProvider):
             # if it is simple tuple set:
             exp = f"(__t{self.seed}_i := iter({value})) and False"
             for e in target.elts:
-                str_e = ast.unparse(e)
-                exp = f"({exp}) or (({str_e} := next(__t{self.seed}_i)) and False)"
+                sets = self._set_single(e, f"next(__t{self.seed}_i)")
+                exp = f"({exp}) or (({sets}) and False)"
             return exp
         elif isinstance(target, ast.Attribute):
-            raise NotImplementedError("attribute set")
+            return self._set_single(target, value)
         elif isinstance(target, ast.Subscript):
-            return f"({ast.unparse(target.value)}).__setitem__({ast.unparse(target.slice)}, ({value})) and False"
+            return self._set_single(target, value)
         elif isinstance(target, ast.Name):
-            return f"({target.id} := ({value})) and False"
+            return self._set_single(target, value)
         raise ValueError("StatementCompiler._set_target wrong target.")
 
     def compile(self, stm: str) -> str | None:
@@ -54,50 +92,34 @@ class StatementCompiler(code_provider.CodeProvider):
         if assign is not None:
             if isinstance(assign, ast.AugAssign):
                 value = ast.unparse(assign.value)
-                i_methods = {
-                    ast.Add: "__iadd__",
-                    ast.Sub: "__isub__",
-                    ast.Mult: "__imul__",
-                    ast.Div: "__itruediv__",
-                    ast.FloorDiv: "__ifloordiv__",
-                    ast.Mod: "__imod__",
-                    ast.Pow: "__ipow__",
-                    ast.LShift: "__ilshift__",
-                    ast.RShift: "__irshift__",
-                    ast.BitAnd: "__iand__",
-                    ast.BitXor: "__ixor__",
-                    ast.BitOr: "__ior__"
-                }
                 methods = {
-                    ast.Add: "__add__",
-                    ast.Sub: "__sub__",
-                    ast.Mult: "__mul__",
-                    ast.Div: "__truediv__",
-                    ast.FloorDiv: "__floordiv__",
-                    ast.Mod: "__mod__",
-                    ast.Pow: "__pow__",
-                    ast.LShift: "__lshift__",
-                    ast.RShift: "__rshift__",
-                    ast.BitAnd: "__and__",
-                    ast.BitXor: "__xor__",
-                    ast.BitOr: "__or__"
+                    ast.Add: ("__iadd__", "__add__", "__radd__"),
+                    ast.Sub: ("__isub__", "__sub__", "__rsub__"),
+                    ast.Mult: ("__imul__", "__mul__", "__rmul__"),
+                    ast.Div: ("__itruediv__", "__truediv__", "__rtruediv__"),
+                    ast.FloorDiv: ("__ifloordiv__", "__floordiv__", "__rfloordiv__"),
+                    ast.Mod: ("__imod__", "__mod__", "__rmod__"),
+                    ast.Pow: ("__ipow__", "__pow__", "__rpow__"),
+                    ast.LShift: ("__ilshift__", "__lshift__", "__rlshift__"),
+                    ast.RShift: ("__irshift__", "__rshift__", "__rrshift__"),
+                    ast.BitAnd: ("__iand__", "__and__", "__rand__"),
+                    ast.BitXor: ("__ixor__", "__xor__", "__rxor__"),
+                    ast.BitOr: ("__ior__, " "__or_", "__ror_"),
                 }
-
                 # call methods on body
-                target = ast.unparse(assign.target)
-                i_method = i_methods[type(assign.op)]
-                method = methods[type(assign.op)]
+                target = assign.target
+                str_target = ast.unparse(assign.target)
+                i_method, method, r_method = methods[type(assign.op)]
 
                 exp = f"""
                     [
-                        __t{self.seed} := type({target}),
+                        __t{self.seed} := type({str_target}),
                         (
-                            {target} := __t{self.seed}.{i_method}({target}, {value})
+                            {self._set_single(target, f"__t{self.seed}_r")}
                         )
-                        if hasattr({target}, {repr(i_method)})
-                        else
+                        if (__t{self.seed}_r := __ONE_sync_i_op(({str_target}), ({value}), {repr(i_method)}, {repr(method)}, {repr(r_method)})) is not NotImplemented else
                         (
-                            {target} := __t{self.seed}.{method}({target}, {value})
+                            False
                         )
                     ].__len__() == 0
                 """

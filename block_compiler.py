@@ -30,13 +30,13 @@ class BlockCompiler(code_provider.CodeProvider):
         return self.compile_block(0, 0)
 
     def custom_imports(self):
-        return super().custom_imports() + [
+        return super().custom_imports() + self.sc.custom_imports() + [
             "contextlib",
             "importlib"
         ]
 
     def custom_header(self):
-        return super().custom_header() + [
+        return super().custom_header() + self.sc.custom_header() + [
             # ReturnObject class, used to return from lambdas using exceptions
             '''
                 __ONE_cls_ReturnObject := type("__ONE_cls_ReturnObject", (BaseException,),
@@ -49,8 +49,8 @@ class BlockCompiler(code_provider.CodeProvider):
             '''
                 __ONE_sync_try := type("__ONE_cls_sync_try", (__ONE_lib_contextlib.ContextDecorator,),
                 {
-                    "__enter__": lambda self: self,
-                    "__exit__": lambda self, *exc:
+                    "__enter__": (lambda self: self),
+                    "__exit__": (lambda self, *exc:
                     (
                         (
                             (
@@ -63,7 +63,7 @@ class BlockCompiler(code_provider.CodeProvider):
                         )
                         if exc != (None,)*3
                         else False
-                    )
+                    ))
                 })
             '''
         ]
@@ -402,8 +402,8 @@ class BlockCompiler(code_provider.CodeProvider):
 
             body = self.compile_block(codeline + 1, indent, new_block = True, class_body = True)
 
-            cls_dict = "{" + ",".join(map(lambda x: f"{repr(x[0])}:{x[1]}", body.dict.items())) + "}"
-            cls_bases = "(" + ",".join(bases) + ")"
+            cls_dict = "{" + ",".join(map(lambda x: f"{repr(x[0])}:({x[1]})", body.dict.items())) + "}"
+            cls_bases = "(" + "".join(map(lambda x: f"{x},", bases)) + ")"
 
             exp = f'({name} := type({repr(name)}, {cls_bases}, {cls_dict})) and False'
 
