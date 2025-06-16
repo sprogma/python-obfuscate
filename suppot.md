@@ -31,13 +31,23 @@
     - [ ] class simple
     - [ ] class with parameters
 - [ ] Classes
-    - [ ] function simple
-    - [ ] function with parameters
-    - [ ] class simple
-    - [ ] class with parameters
+    - [X] only functions
+    - [X] inheritance
+    - [ ] class in class
+    - [ ] constants in class body
+    - [ ] code in class body
+    - [ ] zero argument super()
+- [ ] Functions
+    - [X] simple no arguments
+    - [X] simple arguments (only vars)
+    - [X] special arguments ("/", "*", "**")
+    - [X] default values
+    - [X] return
+    - [ ] try / except
+    - [ ] yield
 - [ ] Async
     - [X] keyword and simple logic
-    - [ ] return
+    - [X] return
     - [ ] try / except
 - [ ] Keywords
     - [X] import
