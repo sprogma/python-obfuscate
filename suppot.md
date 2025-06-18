@@ -81,7 +81,7 @@
     - [ ] continue
     - [ ] break
     - [X] async
-- [ ] Multiple files
+- [X] Multiple files
 
 ## self compiling status:
 yes.

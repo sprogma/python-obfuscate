@@ -20,13 +20,11 @@ class BlockCompiler(code_provider.CodeProvider):
     def __init__(self, statement_compiler):
         self.sc: StatementCompiler = statement_compiler
 
-        self.filename: str = ""
         self.code: list[str] = []
 
         self.current_decorators = []
 
-    def build(self, filename: str, code: str):
-        self.filename = filename
+    def build(self, code: str):
         self.code = code.split('\n')
 
         return self.compile_block(0, 0)
@@ -97,11 +95,11 @@ class BlockCompiler(code_provider.CodeProvider):
                 baseindent = indent
             elif baseindent >= indent:
                 # error
-                raise CompilationError(f"{self.filename}:{codeline}:{indent}: empty block of code.")
+                raise CompilationError(f"{codeline}:{indent}: empty block of code.")
         else:
             if baseindent < indent:
                 # error
-                raise CompilationError(f"{self.filename}:{codeline}:{indent}: Wrong indent uprising.")
+                raise CompilationError(f"{codeline}:{indent}: Wrong indent uprising.")
             elif baseindent > indent:
                 # end of block
                 if class_body:
@@ -146,7 +144,7 @@ class BlockCompiler(code_provider.CodeProvider):
             return_line = end_line
 
             if end_indent is not None and end_indent > indent:
-                raise CompilationError(f"{self.filename}:{end_line}:{indent}: Wrong indent uprising.")
+                raise CompilationError(f"{end_line}:{indent}: Wrong indent uprising.")
             elif end_indent is not None and end_indent < indent:
                 ... # end of block
             else:
@@ -192,7 +190,7 @@ class BlockCompiler(code_provider.CodeProvider):
                     iter_src = ast.get_source_segment(fake_code, node.iter)
 
             if vars_src is None or iter_src is None:
-                raise CompilationError(f"{self.filename}:{codeline}:{indent}: For cycle is wrong and wasn't parsed.")
+                raise CompilationError(f"{codeline}:{indent}: For cycle is wrong and wasn't parsed.")
 
             # compile body
             body = self.compile_block(codeline + 1, indent, new_block = True)
@@ -222,7 +220,7 @@ class BlockCompiler(code_provider.CodeProvider):
 
             # create expression
 
-            exp = f"any((({body.code}) for __ONE_trash in iter(lambda: ({exp}), False)))"
+            exp = f"any((({body.code}) for __ONE_trash in iter(lambda: bool({exp}), False)))"
 
             if follow.code is not None:
                 exp = f"({exp}) or ({follow.code})"
@@ -251,7 +249,7 @@ class BlockCompiler(code_provider.CodeProvider):
                 contexts2.append(ctx2)
 
             if len(contexts1) == 0 or len(contexts2) == 0:
-                raise CompilationError(f"{self.filename}:{codeline}:{indent}: With statement without context managers.")
+                raise CompilationError(f"{codeline}:{indent}: With statement without context managers.")
 
             exp1 = f"[{','.join(map(lambda x: f'({x})', contexts1))}].__len__() == 0"
             exp2 = f"[{','.join(map(lambda x: f'({x})', contexts2))}].__len__() == 0"
@@ -280,7 +278,7 @@ class BlockCompiler(code_provider.CodeProvider):
                 elif len(mod) == 1:
                     data.append(jsd(module=mod[0], name=mod[0]))
                 else:
-                    raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong import ... statement.")
+                    raise CompilationError(f"{codeline}:{0}: Wrong import ... statement.")
 
             # generate expression
             exp = ""
@@ -307,7 +305,7 @@ class BlockCompiler(code_provider.CodeProvider):
                 elif len(e) == 1:
                     data.append(jsd(element=e[0], name=e[0]))
                 else:
-                    raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong from ... import ... statement.")
+                    raise CompilationError(f"{codeline}:{0}: Wrong from ... import ... statement.")
 
             exp = f"(__ONE_import := __ONE_lib_importlib.import_module({repr(base)})) and False"
             for e in data:
@@ -368,7 +366,7 @@ class BlockCompiler(code_provider.CodeProvider):
                     name = node.name
 
             if name is None or args is None:
-                raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong def statement: [this exception impossible]")
+                raise CompilationError(f"{codeline}:{0}: Wrong def statement: [this exception impossible]")
 
             # compile body
             body = self.compile_block(codeline + 1, indent, new_block = True)
@@ -444,7 +442,7 @@ class BlockCompiler(code_provider.CodeProvider):
                     bases = (*map(ast.unparse, node.bases),)
 
             if name is None or bases is None:
-                raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong class statement: [this exception impossible]")
+                raise CompilationError(f"{codeline}:{0}: Wrong class statement: [this exception impossible]")
 
             # compile body: collect all functions and other code
 
@@ -469,6 +467,19 @@ class BlockCompiler(code_provider.CodeProvider):
         elif line.startswith("raise "):
             value = line.removeprefix("raise")
             exp = f"(__ONE_trash for __ONE_trash in '_').throw({value}) and False"
+
+            follow = self.compile_block(codeline + 1, indent)
+
+            if follow.code is not None:
+                if exp is None:
+                    exp = follow.code
+                else:
+                    exp = f"({exp}) or ({follow.code})"
+
+            return jsd(next=follow.next, code=exp)
+        elif line.startswith("assert "):
+            value = line.removeprefix("assert")
+            exp = f"False if ({value}) else ((__ONE_trash for __ONE_trash in '_').throw(AssertionError()) and False)"
 
             follow = self.compile_block(codeline + 1, indent)
 

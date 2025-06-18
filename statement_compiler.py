@@ -58,7 +58,7 @@ class StatementCompiler(code_provider.CodeProvider):
             return f"({ast.unparse(target.value)}).__setitem__({ast.unparse(target.slice)}, ({value})) and False"
         elif isinstance(target, ast.Name):
             return f"({target.id} := ({value})) and False"
-        raise ValueError("StatementCompiler._set_single wrong target.")
+        raise ValueError(f"StatementCompiler._set_single wrong target - {ast.dump(target)}.")
 
     def _set_target(self, target: ast.Expr, value: str) -> str:
 
@@ -104,7 +104,7 @@ class StatementCompiler(code_provider.CodeProvider):
                     ast.RShift: ("__irshift__", "__rshift__", "__rrshift__"),
                     ast.BitAnd: ("__iand__", "__and__", "__rand__"),
                     ast.BitXor: ("__ixor__", "__xor__", "__rxor__"),
-                    ast.BitOr: ("__ior__, " "__or_", "__ror_"),
+                    ast.BitOr: ("__ior__", "__or_", "__ror_"),
                 }
                 # call methods on body
                 target = assign.target

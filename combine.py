@@ -71,6 +71,11 @@ class Combiner:
             f.write(self.result)
         print(f"Saved to {filename}")
 
+    def get_result(self):
+        if self.result is None:
+            raise RuntimeError("Files not combined. (call .combine() first)")
+        return self.result
+
     def remove_local_imports(self, src, module_name):
 
         class ImportRemover(ast.NodeTransformer):
@@ -105,10 +110,3 @@ class Combiner:
                 src = f.read()
             parts.append(self.remove_local_imports(src, os.path.basename(mod).removesuffix(".py")))
         return "\n\n".join(parts)
-
-
-if __name__ == "__main__":
-    _, src_dir, res_filename, *files = sys.argv
-    c = Combiner(src_dir, files)
-    c.combine()
-    c.save(res_filename)

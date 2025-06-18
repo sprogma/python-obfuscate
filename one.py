@@ -6,8 +6,8 @@ import preprocessor
 import statement_compiler
 import block_compiler
 import compiler
+import combine
 import sys
-
 
 
 if __name__ == "__main__":
@@ -22,31 +22,30 @@ if __name__ == "__main__":
         print("No input files.")
         exit(1)
 
-    if len(files) > 1:
-        print("Not implemented compilation of multiple files")
-        exit(1)
-
     print("Compilation started...")
 
-    for name in files:
-        print(f"Compiling {name}...")
-        with open(name, "r") as file:
-            content = file.read()
+    # Combine files
+    c = combine.Combiner(".", files)
+    c.combine()
+    code = c.get_result()
 
-        p = preprocessor.Preprocessor()
-        b = block_compiler.BlockCompiler(statement_compiler=statement_compiler.StatementCompiler())
+    print("Compile combined result...")
 
-        c = compiler.Compiler(
-            preprocessor=p,
-            block_compiler=b
-        )
+    p = preprocessor.Preprocessor()
+    b = block_compiler.BlockCompiler(statement_compiler=statement_compiler.StatementCompiler())
 
-        code = c.compile(name, content)
+    c = compiler.Compiler(
+        preprocessor=p,
+        block_compiler=b
+    )
 
-        if code is None:
-            print("Compilation returned Null")
-        else:
-            with open(dest, "w") as file:
-                file.write(code)
+    code = c.compile(code)
+
+    if code is None:
+        print("Compilation returned null")
+    else:
+        with open(dest, "w") as file:
+            file.write(code)
 
     print("Compilation end.")
+    print(f"Writed into {dest}.")

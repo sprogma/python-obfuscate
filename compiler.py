@@ -16,16 +16,16 @@ class Compiler:
         self.p: Preprocessor = preprocessor
         self.b: BlockCompiler = block_compiler
 
-    def compile(self, filename: str, code: str) -> str | None:
+    def compile(self, code: str) -> str | None:
 
         # preprocess code
         code = self.p.normalize(code)
 
         # compiler uses normalized features like no ; or code after : in line.
-        result = self.b.build(filename, code)
+        result = self.b.build(code)
 
         if result.code == None:
-            raise CompilationError(f"{filename}:{result.next}:0: Empty resulting code.")
+            raise CompilationError(f"{result.next}:0: Empty resulting code.")
 
         imports, headers = self._collect_headers()
 
