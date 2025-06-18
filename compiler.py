@@ -21,10 +21,6 @@ class Compiler:
         # preprocess code
         code = self.p.normalize(code)
 
-        # dump normalized code [for debug]
-        with open(filename.removesuffix(".py")+"_normalized.py", "w") as f:
-            f.write(code)
-
         # compiler uses normalized features like no ; or code after : in line.
         result = self.b.build(filename, code)
 
@@ -40,10 +36,6 @@ class Compiler:
             program = f"(({header}) and False) or ({program})"
         for lib in imports:
             program = f"((__ONE_lib_{lib} := __import__({repr(lib)})) and False) or ({program})"
-
-        print(program)
-        print()
-        print()
 
         # normalize result
         program = self.p.normalize(program)

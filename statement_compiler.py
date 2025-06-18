@@ -18,7 +18,7 @@ class StatementCompiler(code_provider.CodeProvider):
         self.seed = str(random.randint(0, 999999999) + int(time.time() * 1000))
 
     def custom_header(self):
-        return super().custom_header() + [
+        return super(StatementCompiler, self).custom_header() + [
             # function to use __i...__ methods
             """
                 (

@@ -23,6 +23,8 @@ class BlockCompiler(code_provider.CodeProvider):
         self.filename: str = ""
         self.code: list[str] = []
 
+        self.current_decorators = []
+
     def build(self, filename: str, code: str):
         self.filename = filename
         self.code = code.split('\n')
@@ -30,13 +32,13 @@ class BlockCompiler(code_provider.CodeProvider):
         return self.compile_block(0, 0)
 
     def custom_imports(self):
-        return super().custom_imports() + self.sc.custom_imports() + [
+        return super(BlockCompiler, self).custom_imports() + self.sc.custom_imports() + [
             "contextlib",
             "importlib"
         ]
 
     def custom_header(self):
-        return super().custom_header() + self.sc.custom_header() + [
+        return super(BlockCompiler, self).custom_header() + self.sc.custom_header() + [
             # ReturnObject class, used to return from lambdas using exceptions
             '''
                 __ONE_cls_ReturnObject := type("__ONE_cls_ReturnObject", (BaseException,),
@@ -122,20 +124,23 @@ class BlockCompiler(code_provider.CodeProvider):
             end_indent = None
             end_code = None
 
-            while True:
+            run = True
+            while run:
                 if end_line >= len(self.code):
-                    break
-                end_indent, end_code = self.unpack_string(self.code[end_line])
-                if end_indent != indent or not end_code.startswith("elif"):
-                    break
+                    run = False
+                else:
+                    end_indent, end_code = self.unpack_string(self.code[end_line])
+                    if end_indent != indent or not end_code.startswith("elif"):
+                        run = False
+                    else:
 
-                exp = end_code[:end_code.rfind(":")].removeprefix("elif").strip()
+                        exp = end_code[:end_code.rfind(":")].removeprefix("elif").strip()
 
-                elif_true = self.compile_block(end_line + 1, indent, new_block = True)
+                        elif_true = self.compile_block(end_line + 1, indent, new_block = True)
 
-                branches.append(jsd(exp=exp, code=elif_true.code))
+                        branches.append(jsd(exp=exp, code=elif_true.code))
 
-                end_line = elif_true.next
+                        end_line = elif_true.next
 
             else_code = None
             return_line = end_line
@@ -185,7 +190,6 @@ class BlockCompiler(code_provider.CodeProvider):
                 if isinstance(node, ast.For):
                     vars_src = ast.get_source_segment(fake_code, node.target)
                     iter_src = ast.get_source_segment(fake_code, node.iter)
-                    break
 
             if vars_src is None or iter_src is None:
                 raise CompilationError(f"{self.filename}:{codeline}:{indent}: For cycle is wrong and wasn't parsed.")
@@ -224,14 +228,53 @@ class BlockCompiler(code_provider.CodeProvider):
                 exp = f"({exp}) or ({follow.code})"
 
             return jsd(next=follow.next, code=exp)
+        elif line.startswith("with "):
+
+            fake_code = f"{line}..."
+
+            # use ast to split it in parts
+            tree = ast.parse(fake_code)
+
+            vars = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.With):
+                    vars = node.items
+
+            contexts1 = []
+            contexts2 = []
+            for pair in vars:
+                ctx = ast.unparse(pair.context_expr)
+                if pair.optional_vars is not None:
+                    ctx1 = f"(({ast.unparse(pair.optional_vars)} := ({ctx})), {ast.unparse(pair.optional_vars)}.__enter__())"
+                    ctx2 = f"({ast.unparse(pair.optional_vars)}.__exit__(None, None, None))"
+                contexts1.append(ctx1)
+                contexts2.append(ctx2)
+
+            if len(contexts1) == 0 or len(contexts2) == 0:
+                raise CompilationError(f"{self.filename}:{codeline}:{indent}: With statement without context managers.")
+
+            exp1 = f"[{','.join(map(lambda x: f'({x})', contexts1))}].__len__() == 0"
+            exp2 = f"[{','.join(map(lambda x: f'({x})', contexts2))}].__len__() == 0"
+
+            # compile body
+            body = self.compile_block(codeline + 1, indent, new_block=True)
+
+            exp = f"(({exp1}) or ({body.code})) or ({exp2})"
+
+            # compile following code
+            follow = self.compile_block(body.next, indent)
+
+            if follow.code is not None:
+                exp = f"({exp}) or ({follow.code})"
+
+            return jsd(next=follow.next, code=exp)
         elif line.startswith("import "):
             # using good (strict) syntax of import ... statement
             # split by ","
             modules = line.removeprefix("import").split(",")
             data = []
-            for mod in modules:
+            for mod in map(str.split, modules):
                 # for some reason, python throws an error if module or class name is "as"
-                mod = mod.split()
                 if len(mod) == 3 and "as" in mod:
                     data.append(jsd(module=mod[0], name=mod[2]))
                 elif len(mod) == 1:
@@ -258,8 +301,7 @@ class BlockCompiler(code_provider.CodeProvider):
             base = line[:max(line.find(" import "), line.find(" import*"))].removeprefix("from").strip()
             elements = line[max(line.find(" import "), line.find(" import*")):].lstrip().removeprefix("import").split(",")
             data = []
-            for e in elements:
-                e = e.split()
+            for e in map(str.split, elements):
                 if len(e) == 3 and "as" in e:
                     data.append(jsd(element=e[0], name=e[2]))
                 elif len(e) == 1:
@@ -324,7 +366,6 @@ class BlockCompiler(code_provider.CodeProvider):
                     args = ", ".join(parts)
 
                     name = node.name
-                    break
 
             if name is None or args is None:
                 raise CompilationError(f"{self.filename}:{codeline}:{0}: Wrong def statement: [this exception impossible]")
@@ -358,6 +399,13 @@ class BlockCompiler(code_provider.CodeProvider):
                                 ][-1]
                             )
                         """
+
+            # apply decorators
+            for i in self.current_decorators:
+                fn = f"{i}(({fn}))"
+
+            self.current_decorators = []
+
             if class_body:
                 # follow will override function if there is same name
                 return jsd(next = follow.next, dict = {name : fn} | follow.dict)
@@ -413,6 +461,11 @@ class BlockCompiler(code_provider.CodeProvider):
                 exp = f"({exp}) or ({follow.code})"
 
             return jsd(next=follow.next, code=exp)
+        elif line.startswith("@"):
+            # decorator
+            self.current_decorators.append(line[1:])
+
+            return self.compile_block(codeline + 1, indent, class_body=class_body)
         elif line.startswith("raise "):
             value = line.removeprefix("raise")
             exp = f"(__ONE_trash for __ONE_trash in '_').throw({value}) and False"

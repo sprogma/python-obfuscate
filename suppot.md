@@ -30,14 +30,14 @@
     - [X] from import
     - [ ] from import *
 - [ ] Decorators
-    - [ ] function simple
-    - [ ] function with parameters
-    - [ ] class simple
-    - [ ] class with parameters
+    - [X] for function simple
+    - [X] for function with parameters
+    - [ ] for class simple
+    - [ ] for class with parameters
 - [ ] Classes
     - [X] only functions
     - [X] inheritance
-    - [ ] class in class
+    - [ ] class direct in class
     - [ ] constants in class body
     - [ ] code in class body
     - [ ] zero argument super()
@@ -53,6 +53,9 @@
     - [X] keyword and simple logic
     - [X] return
     - [ ] try / except
+- [ ] With
+    - [X] basic behaviour
+    - [ ] exception proof with (catch errors)
 - [ ] Keywords
     - [X] import
     - [X] from import
@@ -67,6 +70,7 @@
     - [X] return
     - [X] lambda
     - [X] await
+    - [X] with
     - [ ] assert
     ### hard to implement
     - [ ] yield
@@ -80,7 +84,4 @@
 - [ ] Multiple files
 
 ## self compiling status:
-not yet.
-### need to implement
-- multiple files
-
+yes.
