@@ -1,21 +1,24 @@
-class GoldIRA:
-    def __init__(self, price, init_oz, annual_oz, years, increase_pct):
-        self.price = price
-        self.oz = init_oz
-        self.annual_oz = annual_oz
-        self.years = years
-        self.increase_pct = increase_pct
+class Bank:
+    def __init__(self, money, percent):
+        self.percent = percent
+        self.start_money = money
+        self.money = money
+        self.multiplier = 1.0 + percent / 100.0
 
-    def calc_retirement_value(self):
-        for _ in range(self.years):
-            self.price += self.price * self.increase_pct / 100
-            self.oz += self.annual_oz
-        return self.oz * self.price
+    def add_year(self):
+        self.money *= self.multiplier
 
-    def display(self):
-        value = self.calc_retirement_value()
-        print(f"Gold IRA value at retirement: ${value:,.2f}")
+    def add_years(self, n):
+        for year in range(n):
+            self.add_year()
+
+    def get_profit(self):
+        return self.money - self.start_money
+
+    def __repr__(self):
+        return f"Bank(${self.money:,}, {self.percent}%)"
 
 
-ira = GoldIRA(1800, 50, 5, 30, 2)
-ira.display()
+bank = Bank(100_000, 7)
+bank.add_years(17)
+print(bank, bank.get_profit())

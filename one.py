@@ -13,8 +13,15 @@ import sys
 if __name__ == "__main__":
     args = sys.argv[1:]
     dest = args[args.index("-o") + 1] if "-o" in args else None
-    files = [*map(lambda x: x[1], filter(lambda i: i[1] not in ("-o", "-NoPrint") and (i[0] == 0 or args[i[0] - 1] != "-o"), enumerate(args)))]
+    files = [*map(lambda x: x[1], filter(lambda i: i[1] not in ("-o", "-NoPrint", "--help") and (i[0] == 0 or args[i[0] - 1] != "-o"), enumerate(args)))]
     debug_print = "-NoPrint" not in args
+
+    if "--help" in args:
+        print("Help on one.py:")
+        print("usage: python3 one.py <filename> (<filename>)* (-o <destination>) (-NoPrint).")
+        print("if -o not present, then resulting code will be printed in stdout.")
+        print("if -NoPrint passed, no debug/info information will be printed.")
+        exit(0)
 
     if debug_print:
         print("Compile:")
