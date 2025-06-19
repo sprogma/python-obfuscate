@@ -65,3 +65,6 @@ Documentation for one.py:
 ```sh
 python3 ./one.py --help
 ```
+
+## Notes
+To get better results you can pass result into minifier, for example.
