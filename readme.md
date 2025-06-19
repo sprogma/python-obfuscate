@@ -51,9 +51,13 @@ To reproduce this example:
 # or ./run.ps1 -Files ./examples/example.py -Destination ./examples/example_res.py
 ```
 or with python:
-```sh
+```bash
 python3 ./one.py ./examples/example.py -o ./examples/example_res.py
 # or "py" for windows
+```
+or with one liner :)   (works on linux, on windows code is too big to pass into program arguments)
+```bash
+python3 -c "$(cat examples/self.py)" examples/example.py examples/example_res.py
 ```
 
 Documentation for run.ps1:
@@ -62,7 +66,7 @@ Get-Help -Full ./run.ps1
 ```
 
 Documentation for one.py:
-```sh
+```bash
 python3 ./one.py --help
 ```
 
