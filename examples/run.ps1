@@ -1,125 +1,75 @@
+<#
+    .SYNOPSIS
+        This script should be used to run "one" compiler from powershell/pwsh
+
+    .DESCRIPTION
+        "one" compiler generate one python expression from provided code.
+        At the moment, it supports not all python keywords, and sometimes
+        not show errors (place there them are)
+
+        To see supported constructions see "support.md"
+        (on github: https://github.com/sprogma/python-obfuscate/blob/main/suppot.md)
+
+    .EXAMPLE
+
+        ./run.ps1 -Files a.py b.py -Destination res.py -RunAfter'
+
+        compile a.py and b.py (one of them can import another) into res.py, and run resulting program.
+
+    .EXAMPLE
+
+        Get-ChildItem -Recurse *.py -Exclude tests.py | ./run.ps1 -Destination $null -PassThru | Measure-Object -line
+
+        compile all files excluding test.py using pipe, not save to file, see how many lines it consume, must be one :)
+#>
+[CmdletBinding(HelpUri = "https://github.com/sprogma/python-obfuscate")]
 param(
-    [string]$Path="examples/example.py",
-    [string]$Destination = "examples/example_res.py",
-    [switch]$MinimizeCode,
-    [switch]$PrintAfter,
+    # Array of files to compile. If there are many files, compiler can found circular import dependence and fail.
+    [Parameter(ValueFromPipeline = $true, Mandatory = $true)]
+    [string[]]$Files,
+    # Path to save file (default is "out.py"), if null, not save result
+    [AllowEmptyString()]
+    [string]$Destination = "out.py",
+    # If is on, script send resulting code both into stdout and $Destination file.
+    [switch]$PassThru,
+    # If is on, run resulting file
     [switch]$RunAfter,
-    [switch]$Benchmark,
-    $BenchmarkRepeats="auto"
+    # Provide python executable (default is "py.exe" for Windows and "python3" for other OS.)
+    [AllowEmptyString()]
+    [string]$PythonExecutablePreference=$null
 )
 
-$pythonExecutable = "py"
+# guess python executable by platform
+$PythonExecutable = ($IsWindows ? "py.exe" : "python3")
 
-
-& $pythonExecutable one.py $Path -o $Destination
-
-
-if ($MinimizeCode)
+if ($PythonExecutablePreference)
 {
-    $code = & $pythonExecutable -m python_minifier --no-hoist-literals $Destination
-    $code >$Destination
+    $PythonExecutable = $PythonExecutablePreference
+}
+
+if ($input)
+{
+    $Files = $input
+}
+
+if ($Destination)
+{
+    & $PythonExecutable one.py @Files -o $Destination
+    $result = Get-Content $Destination -Raw
+}
+else
+{
+    $result = & $PythonExecutable one.py @Files -NoPrint
 }
 
 
-if ($PrintAfter)
+if ($PassThru)
 {
-    Write-Host "Resulting file:" -ForegroundColor Green
-    Get-Content $Destination -Raw | Out-Host
+    $result
 }
 
 if ($RunAfter)
 {
     Write-Host "Run result:" -ForegroundColor Green
-    & $pythonExecutable $Destination
-}
-
-if ($Benchmark)
-{
-    function Bench
-    {
-        param(
-            [string]$file,
-            $repeats
-        )
-
-
-        if ($repeats -eq "auto")
-        {
-            $WarmupTime = 0.5
-            $TestingTime = 4.0
-
-            $time = [System.Collections.Generic.List[double]]::new();
-
-            $start = [datetime]::UtcNow
-            do
-            {
-                Measure-Command { & $pythonExecutable $Destination } | Out-Null
-                $nowTime = ([datetime]::UtcNow - $start).TotalSeconds
-                Write-Progress -Activity "benchmark $file" -Status "warmup" -PercentComplete ([int]([math]::min(100, $nowTime / $WarmupTime * 100)))
-            }
-            while ($nowTime -lt $WarmupTime)
-
-
-            $start = [datetime]::UtcNow
-            do
-            {
-                [void]$time.Add((Measure-Command { & $pythonExecutable $Destination }).TotalMilliseconds)
-                $nowTime = ([datetime]::UtcNow - $start).TotalSeconds
-                Write-Progress -Activity "benchmark $file" -Status "running" -PercentComplete ([int]([math]::min(100, $nowTime / $TestingTime * 100)))
-            }
-            while ($nowTime -lt $TestingTime)
-
-
-            Write-Progress -Activity "benchmark $file" -Status "running" -Completed
-        }
-        else
-        {
-            $time = [System.Collections.Generic.List[double]]::new();
-            for ($i = 0; $i -lt $repeats; ++$i)
-            {
-                [void]$time.Add((Measure-Command { & $pythonExecutable $Destination }).TotalMilliseconds)
-                Write-Progress -Activity "benchmark $file" -Status "running" -PercentComplete ([int]([math]::min(100, ($i + 1) / $repeats * 100)))
-            }
-            Write-Progress -Activity "benchmark $file" -Status "running" -Completed
-        }
-
-        return @($time)
-    }
-
-    Write-Host "Benchmarking..." -ForegroundColor Green
-
-    $was = Bench $Path        -repeats $BenchmarkRepeats
-    $now = Bench $Destination -repeats $BenchmarkRepeats
-
-    Write-Host "Benchmark results: " -ForegroundColor Green
-
-    Write-Host "source: " -ForegroundColor Green
-    ($a = ($was | Measure-Object -AllStats)) | Select-Object Count, Average, Maximum, Minimum, StandardDeviation | Out-Host
-    Write-Host "result: " -ForegroundColor Green
-    ($b = ($now | Measure-Object -AllStats)) | Select-Object Count, Average, Maximum, Minimum, StandardDeviation | Out-Host
-
-
-    if ($a.Average -gt 1e-12 -and $b.Average -gt 1e-12)
-    {
-        $speed = $b.Average / $a.Average * 100
-
-        Write-Host "At average, new solution is $([math]::round($speed, 1))% of previous." -ForegroundColor Yellow
-
-        if ([math]::abs($speed - 100) -lt 2.0) {
-            Write-Host "Them are almost equal!" -ForegroundColor Yellow
-        }
-        elseif ($speed -lt 100) {
-            $tt = 100 / $speed;
-            Write-Host "new is $tt times faster!" -ForegroundColor Green
-        }
-        else {
-            $tt = $speed / 100;
-            Write-Host "old is $tt times slower!" -ForegroundColor Red
-        }
-    }
-    else
-    {
-        Write-Host "Solutions are incomparable! [speed of one of them is almost zero]"
-    }
-
+    & $PythonExecutable $Destination
 }

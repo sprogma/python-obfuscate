@@ -11,8 +11,6 @@ class Combiner:
         self.files = set(map(os.path.abspath, files))
         self.result = None
 
-        print(f"Start combine...")
-
     def get_local(self, filename: str):
         for suffix in (".py", ".pyc", ".pyd", ".pyo", ".pyw", ".pyx"):
             n1 = os.path.abspath(filename.replace(".", "/") + suffix)
@@ -69,7 +67,6 @@ class Combiner:
             raise RuntimeError("Files not combined. (call .combine() first)")
         with open(filename, "w", encoding="utf-8") as f:
             f.write(self.result)
-        print(f"Saved to {filename}")
 
     def get_result(self):
         if self.result is None:
