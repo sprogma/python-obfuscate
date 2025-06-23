@@ -62,7 +62,7 @@ if __name__ == "__main__":
         if dest is None:
             print(code)
         else:
-            with open(dest, "w") as file:
+            with open(dest, "w", encoding='utf-8') as file:
                 file.write(code)
 
     if debug_print:

@@ -52,19 +52,21 @@ class BlockCompiler(code_provider.CodeProvider):
                 """
                     __ONE_sync_try := type("__ONE_cls_sync_try", (__ONE_lib_contextlib.ContextDecorator,),
                     {
-                        "__init__": (lambda self, fnlnk: setattr(self, "fnlnk", fnlnk)),
+                        "__init__": (lambda self, fnlnk, try_block: [setattr(self, "fnlnk", fnlnk), setattr(self, "try_block", try_block), None][-1]),
                         "__enter__": (lambda self: self),
                         "__exit__": (lambda self, *exc:
                         (
-                            bool(
+                            (
                                 (
-                                    setattr(self.fnlnk[0], "__ONE_var_error", exc[1])
+                                    bool(setattr(self.fnlnk[0], "__ONE_var_error", exc[1])) or True
+                                    if self.try_block else
+                                    False
                                 )
                                 if exc[0] != __ONE_cls_ReturnObject else
-                                (
+                                bool(
                                     setattr(self.fnlnk[0], "__ONE_var_retval", exc[1].val)
-                                )
-                            ) or True
+                                ) or True
+                            )
                             if exc != (None,)*3
                             else False
                         ))
@@ -120,44 +122,42 @@ class BlockCompiler(code_provider.CodeProvider):
             exp = line[:line.rfind(":")].removeprefix("if").strip()
 
             if_true = self.compile_block(codeline + 1, indent, new_block = True)
-            end_line: int = if_true.next
+            next_line: int = if_true.next
 
             branches.append(jsd(exp=exp, code=if_true.code))
 
-            end_indent = None
-            end_code = None
+            next_indent = None
+            next_code = None
 
             run = True
             while run:
-                if end_line >= len(self.code):
+                if next_line >= len(self.code):
                     run = False
                 else:
-                    end_indent, end_code = self.unpack_string(self.code[end_line])
-                    if end_indent != indent or not end_code.startswith("elif"):
+                    next_indent, next_code = self.unpack_string(self.code[next_line])
+                    if next_indent != indent or not next_code.startswith("elif"):
                         run = False
                     else:
 
-                        exp = end_code[:end_code.rfind(":")].removeprefix("elif").strip()
+                        exp = next_code[:next_code.rfind(":")].removeprefix("elif").strip()
 
-                        elif_true = self.compile_block(end_line + 1, indent, new_block = True)
+                        elif_true = self.compile_block(next_line + 1, indent, new_block = True)
 
                         branches.append(jsd(exp=exp, code=elif_true.code))
 
-                        end_line = elif_true.next
+                        next_line = elif_true.next
 
             else_code = None
-            return_line = end_line
+            return_line = next_line
 
-            if end_indent is not None and end_indent > indent:
-                raise CompilationError(f"{end_line}:{indent}: Wrong indent uprising.")
-            elif end_indent is not None and end_indent < indent:
-                ... # end of block
-            else:
+            if next_indent is not None and next_indent > indent:
+                raise CompilationError(f"{next_line}:{indent}: Wrong indent uprising.")
+            elif next_indent is not None and next_indent == indent:
                 # indents are equal
-                if end_line < len(self.code):
-                    end_indent, end_code = self.unpack_string(self.code[end_line])
-                    if end_code.startswith("else"):
-                        else_res = self.compile_block(end_line + 1, indent, new_block = True)
+                if next_line < len(self.code):
+                    next_indent, next_code = self.unpack_string(self.code[next_line])
+                    if next_code.startswith("else"):
+                        else_res = self.compile_block(next_line + 1, indent, new_block = True)
                         else_code = else_res.code
                         return_line = else_res.next
 
@@ -250,6 +250,9 @@ class BlockCompiler(code_provider.CodeProvider):
                 if pair.optional_vars is not None:
                     ctx1 = f"(({ast.unparse(pair.optional_vars)} := ({ctx})), {ast.unparse(pair.optional_vars)}.__enter__())"
                     ctx2 = f"({ast.unparse(pair.optional_vars)}.__exit__(None, None, None))"
+                else:
+                    ctx1 = f"((__ONE_var_with_op := ({ctx})), __ONE_var_with_op.__enter__())"
+                    ctx2 = f"(__ONE_var_with_op.__exit__(None, None, None))"
                 contexts1.append(ctx1)
                 contexts2.append(ctx2)
 
@@ -373,6 +376,11 @@ class BlockCompiler(code_provider.CodeProvider):
             if name is None or args is None:
                 raise CompilationError(f"{codeline}:{0}: Wrong def statement: [this exception impossible]")
 
+            # ! SAVE DECORATORS BEFORE BODY AND FOLLOW COMPILATION
+
+            decs = self.current_decorators
+            self.current_decorators = []
+
             # compile body
             body = self.compile_block(codeline + 1, indent, new_block = True)
 
@@ -387,7 +395,7 @@ class BlockCompiler(code_provider.CodeProvider):
                             lambda *args, **kvargs : (
                                 [
                                     __ONE_var_link := [None],
-                                    __ONE_var_realfunction := __ONE_sync_try(__ONE_var_link)(lambda {args}: (({body.code}) for __ONE_trash in '_' if True or await fun()).__anext__())),
+                                    __ONE_var_realfunction := __ONE_sync_try(__ONE_var_link, False)(lambda {args}: (({body.code}) for __ONE_trash in '_' if True or await fun()).__anext__())),
                                     __ONE_var_link.__setitem__(0, __ONE_var_realfunction),
                                     __ONE_var_realfunction(*args, **kvargs),
                                     getattr(__ONE_var_realfunction, "__ONE_var_retval", None)
@@ -399,7 +407,7 @@ class BlockCompiler(code_provider.CodeProvider):
                             lambda *args, **kvargs : (
                                 [
                                     __ONE_var_link := [None],
-                                    __ONE_var_realfunction := __ONE_sync_try(__ONE_var_link)(lambda {args}: ({body.code})),
+                                    __ONE_var_realfunction := __ONE_sync_try(__ONE_var_link, False)(lambda {args}: ({body.code})),
                                     __ONE_var_link.__setitem__(0, __ONE_var_realfunction),
                                     __ONE_var_realfunction(*args, **kvargs),
                                     getattr(__ONE_var_realfunction, "__ONE_var_retval", None)
@@ -408,10 +416,8 @@ class BlockCompiler(code_provider.CodeProvider):
                         """
 
             # apply decorators
-            for i in self.current_decorators:
+            for i in decs:
                 fn = f"{i}(({fn}))"
-
-            self.current_decorators = []
 
             if class_body:
                 # follow will override function if there is same name
@@ -489,7 +495,7 @@ class BlockCompiler(code_provider.CodeProvider):
                         fake_code = f"try:...\n{next_code}..."
                         tree = ast.parse(fake_code)
 
-                        assert tree.body[0] is ast.Try
+                        assert isinstance(tree.body[0], ast.Try)
 
                         as_id = tree.body[0].handlers[0].name
 
@@ -503,8 +509,6 @@ class BlockCompiler(code_provider.CodeProvider):
                         exc.append(jsd(cls=catch, name=as_id, code=handler.code))
 
                         next_line = handler.next
-
-            print(exc)
 
             handler = None
 
@@ -548,7 +552,7 @@ class BlockCompiler(code_provider.CodeProvider):
             # create expression
             exp = f"""[
                 __ONE_var_link := [None],
-                __ONE_var_realfunction := __ONE_sync_try(__ONE_var_link)(lambda: ({body.code})),
+                __ONE_var_realfunction := __ONE_sync_try(__ONE_var_link, True)(lambda: ({body.code})),
                 __ONE_var_link.__setitem__(0, __ONE_var_realfunction),
                 __ONE_var_realfunction(),
                     ({handler})
