@@ -56,6 +56,16 @@
 - [ ] With
     - [X] basic behaviour
     - [ ] exception proof with (catch errors)
+- [ ] Try
+    - [X] try
+    - [X] except
+    - [X] multiple except
+    - [X] except as:
+    - [ ] hard except match cases
+    - [ ] ExceptionGroups (except* ...)
+    - [X] else
+    - [X] finally
+    - [ ] return from try...
 - [ ] Keywords
     - [X] import
     - [X] from import
