@@ -56,7 +56,8 @@
 - [ ] With
     - [X] basic behaviour
     - [ ] exception proof with (catch errors)
-- [ ] Try
+- [ ] Try in functions (not global space)
+    - ! For now, variables, set in try block is not visible outside of it. [ ] solve this.
     - [X] try
     - [X] except
     - [X] multiple except

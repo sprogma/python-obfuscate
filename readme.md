@@ -72,3 +72,15 @@ python3 ./one.py --help
 
 ## Notes
 To get better results you can pass result into minifier, for example.
+
+
+## Self compilation
+To compile this project use one of this methods:
+
+```powershell
+py .\examples\self.py (Get-ChildItems *.py) -o .\examples\self.py
+```
+
+```bash
+python3 ./examples/self.py $(ls *.py) -o examples/linux.py
+```
